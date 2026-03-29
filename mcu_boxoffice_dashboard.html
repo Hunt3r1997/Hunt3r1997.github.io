@@ -1,0 +1,212 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); }
+  .dash { padding: 1rem 0; }
+  .header { margin-bottom: 1.5rem; }
+  .header h1 { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+  .header p { font-size: 13px; color: var(--color-text-secondary); margin-top: 4px; }
+  .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 14px 16px; }
+  .metric-label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 6px; }
+  .metric-value { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+  .metric-sub { font-size: 11px; color: var(--color-text-tertiary); margin-top: 3px; }
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 1.5rem; }
+  .chart-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; }
+  .chart-title { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 12px; }
+  .full-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; font-size: 11px; color: var(--color-text-secondary); }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: left; padding: 6px 8px; border-bottom: 0.5px solid var(--color-border-tertiary); white-space: nowrap; }
+  tbody td { padding: 6px 8px; color: var(--color-text-primary); border-bottom: 0.5px solid var(--color-border-tertiary); white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--color-background-secondary); }
+  .badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 500; }
+  .badge-1 { background: #E6F1FB; color: #0C447C; }
+  .badge-2 { background: #EAF3DE; color: #27500A; }
+  .badge-3 { background: #FAEEDA; color: #633806; }
+  .badge-4 { background: #FBEAF0; color: #72243E; }
+  .badge-5 { background: #EEEDFE; color: #3C3489; }
+  .badge-6 { background: #E1F5EE; color: #085041; }
+  .roi-pos { color: #27500A; }
+  .roi-neg { color: #A32D2D; }
+  @media (prefers-color-scheme: dark) {
+    .badge-1 { background: #0C447C; color: #B5D4F4; }
+    .badge-2 { background: #27500A; color: #C0DD97; }
+    .badge-3 { background: #633806; color: #FAC775; }
+    .badge-4 { background: #72243E; color: #F4C0D1; }
+    .badge-5 { background: #3C3489; color: #CECBF6; }
+    .badge-6 { background: #085041; color: #9FE1CB; }
+    .roi-pos { color: #97C459; }
+    .roi-neg { color: #F09595; }
+  }
+</style>
+
+<div class="dash">
+  <div class="header">
+    <h1>MCU box office</h1>
+    <p>38 films · 2008–2025 · Phases 1–6</p>
+  </div>
+
+  <div class="metrics" id="metrics"></div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Worldwide gross by phase (billions)</div>
+      <div class="legend" id="phase-legend"></div>
+      <div style="position: relative; height: 220px;"><canvas id="phaseChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Budget vs worldwide gross (top 20)</div>
+      <div style="position: relative; height: 260px;"><canvas id="bubbleChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="full-card">
+    <div class="chart-title">Worldwide gross per film</div>
+    <div style="position: relative; height: 420px;"><canvas id="barChart"></canvas></div>
+  </div>
+
+  <div class="full-card">
+    <div class="chart-title" style="margin-bottom: 10px;">All films ranked by worldwide gross</div>
+    <div class="table-wrap">
+      <table id="filmTable"></table>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const raw = [
+  {t:"Iron Man",y:2008,ph:1,b:140,dg:318604126,ig:266762121,wg:585366247,rt:91,roi:318.12},
+  {t:"The Incredible Hulk",y:2008,ph:1,b:150,dg:134806913,ig:129964083,wg:264770996,rt:69,roi:81.98},
+  {t:"Iron Man 2",y:2010,ph:1,b:200,dg:312433331,ig:311500000,wg:623933331,rt:71,roi:302.81},
+  {t:"Thor",y:2011,ph:1,b:150,dg:181030624,ig:268295994,wg:449326618,rt:76,roi:213.80},
+  {t:"Captain America: First Avenger",y:2011,ph:1,b:140,dg:176654505,ig:193915269,wg:370569774,rt:75,roi:164.69},
+  {t:"The Avengers",y:2012,ph:1,b:220,dg:623357910,ig:897180626,wg:1520538536,rt:91,roi:928.96},
+  {t:"Iron Man 3",y:2013,ph:2,b:200,dg:409013994,ig:806563211,wg:1215577205,rt:78,roi:725.41},
+  {t:"Thor: The Dark World",y:2013,ph:2,b:170,dg:206362140,ig:438421000,wg:644783140,rt:74,roi:339.13},
+  {t:"Captain America: Winter Soldier",y:2014,ph:2,b:170,dg:259766572,ig:454654931,wg:714421503,rt:92,roi:388.87},
+  {t:"Guardians of the Galaxy",y:2014,ph:2,b:170,dg:333718600,ig:439631547,wg:773350147,rt:92,roi:430.96},
+  {t:"Avengers: Age of Ultron",y:2015,ph:2,b:250,dg:459005868,ig:946012180,wg:1405018048,rt:82,roi:825.01},
+  {t:"Ant-Man",y:2015,ph:2,b:130,dg:180202163,ig:339109802,wg:519311965,rt:85,roi:278.08},
+  {t:"Captain America: Civil War",y:2016,ph:3,b:250,dg:408084349,ig:746962067,wg:1155046416,rt:89,roi:646.46},
+  {t:"Doctor Strange",y:2016,ph:3,b:165,dg:232641920,ig:445154156,wg:677796076,rt:86,roi:366.28},
+  {t:"Guardians Vol. 2",y:2017,ph:3,b:200,dg:389813101,ig:473950261,wg:863763362,rt:87,roi:474.12},
+  {t:"Spider-Man: Homecoming",y:2017,ph:3,b:175,dg:334952829,ig:545983955,wg:880936784,rt:87,roi:504.24},
+  {t:"Thor: Ragnarok",y:2017,ph:3,b:180,dg:315058289,ig:540243517,wg:855301806,rt:87,roi:482.36},
+  {t:"Black Panther",y:2018,ph:3,b:200,dg:700426566,ig:649499517,wg:1349926083,rt:79,roi:821.38},
+  {t:"Avengers: Infinity War",y:2018,ph:3,b:325,dg:678815482,ig:1373599557,wg:2052415039,rt:92,roi:1233.87},
+  {t:"Ant-Man and the Wasp",y:2018,ph:3,b:195,dg:216648740,ig:406025399,wg:622674139,rt:78,roi:305.48},
+  {t:"Captain Marvel",y:2019,ph:3,b:160,dg:426829839,ig:704586607,wg:1131416446,rt:45,roi:693.87},
+  {t:"Avengers: Endgame",y:2019,ph:3,b:356,dg:858373000,ig:1941066100,wg:2799439100,rt:90,roi:1745.31},
+  {t:"Spider-Man: Far From Home",y:2019,ph:3,b:160,dg:391283744,ig:741414082,wg:1132697826,rt:95,roi:694.78},
+  {t:"Black Widow",y:2021,ph:4,b:200,dg:183651655,ig:196100000,wg:379751655,rt:91,roi:128.39},
+  {t:"Shang-Chi",y:2021,ph:4,b:200,dg:224543292,ig:207700000,wg:432243292,rt:98,roi:165.89},
+  {t:"Eternals",y:2021,ph:4,b:236,dg:164870234,ig:237194665,wg:402064899,rt:77,roi:118.62},
+  {t:"Spider-Man: No Way Home",y:2021,ph:4,b:200,dg:814866759,ig:1106533944,wg:1921400703,rt:97,roi:1229.57},
+  {t:"Doctor Strange: Multiverse of Madness",y:2022,ph:4,b:294,dg:411331607,ig:544444197,wg:955775804,rt:85,roi:472.70},
+  {t:"Thor: Love and Thunder",y:2022,ph:4,b:250,dg:343256830,ig:417671251,wg:760928081,rt:76,roi:364.95},
+  {t:"Black Panther: Wakanda Forever",y:2022,ph:4,b:250,dg:453829060,ig:405379776,wg:859208836,rt:93,roi:435.15},
+  {t:"Ant-Man: Quantumania",y:2023,ph:5,b:200,dg:214504909,ig:261566271,wg:476071180,rt:81,roi:197.19},
+  {t:"Guardians Vol. 3",y:2023,ph:5,b:250,dg:358995815,ig:486559962,wg:845555777,rt:94,roi:425.40},
+  {t:"The Marvels",y:2023,ph:5,b:219,dg:84500223,ig:121636602,wg:206136825,rt:79,roi:-9.19},
+  {t:"Deadpool & Wolverine",y:2024,ph:5,b:200,dg:636745858,ig:701327787,wg:1338073645,rt:94,roi:812.91},
+  {t:"Captain America: Brave New World",y:2025,ph:5,b:180,dg:200500001,ig:214601576,wg:415101577,rt:75,roi:167.93},
+  {t:"Thunderbolts*",y:2025,ph:5,b:190,dg:192162589,ig:382436917,wg:574599506,rt:93,roi:274.52},
+  {t:"Fantastic Four: First Steps",y:2025,ph:6,b:200,dg:274286610,ig:247572118,wg:521858728,rt:90,roi:229.90},
+];
+
+const fmt = v => '$' + (v >= 1e9 ? (v/1e9).toFixed(2)+'B' : (v/1e6).toFixed(0)+'M');
+const fmtB = v => '$' + (v/1e9).toFixed(2)+'B';
+
+const totalWG = raw.reduce((a,m)=>a+m.wg,0);
+const totalBudget = raw.reduce((a,m)=>a+m.b*1e6,0);
+const avgROI = raw.reduce((a,m)=>a+m.roi,0)/raw.length;
+const topFilm = raw.slice().sort((a,b)=>b.wg-a.wg)[0];
+
+document.getElementById('metrics').innerHTML = `
+  <div class="metric"><div class="metric-label">Total worldwide gross</div><div class="metric-value">${fmtB(totalWG)}</div><div class="metric-sub">38 films</div></div>
+  <div class="metric"><div class="metric-label">Total production budget</div><div class="metric-value">${fmtB(totalBudget)}</div><div class="metric-sub">across all phases</div></div>
+  <div class="metric"><div class="metric-label">Average ROI</div><div class="metric-value">${avgROI.toFixed(0)}%</div><div class="metric-sub">per film</div></div>
+  <div class="metric"><div class="metric-label">Highest grossing</div><div class="metric-value">${fmtB(topFilm.wg)}</div><div class="metric-sub">${topFilm.t}</div></div>
+`;
+
+const phaseColors = ['#378ADD','#639922','#BA7517','#D4537E','#7F77DD','#1D9E75'];
+const phaseLabels = ['Phase 1','Phase 2','Phase 3','Phase 4','Phase 5','Phase 6'];
+const phaseData = [1,2,3,4,5,6].map(ph => raw.filter(m=>m.ph===ph).reduce((a,m)=>a+m.wg,0)/1e9);
+
+document.getElementById('phase-legend').innerHTML = phaseLabels.map((l,i)=>
+  `<span><span class="legend-dot" style="background:${phaseColors[i]}"></span>${l}</span>`
+).join('');
+
+new Chart(document.getElementById('phaseChart'), {
+  type: 'bar',
+  data: { labels: phaseLabels, datasets: [{ data: phaseData, backgroundColor: phaseColors, borderRadius: 4, borderSkipped: false }] },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' $'+ctx.raw.toFixed(2)+'B' } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#888' } },
+      y: { grid: { color: 'rgba(128,128,128,0.15)' }, ticks: { font: { size: 11 }, color: '#888', callback: v => '$'+v.toFixed(1)+'B' } }
+    }
+  }
+});
+
+const top20 = raw.slice().sort((a,b)=>b.wg-a.wg).slice(0,20);
+new Chart(document.getElementById('bubbleChart'), {
+  type: 'scatter',
+  data: { datasets: top20.map((m,i) => ({ label: m.t, data: [{ x: m.b, y: m.wg/1e6 }], backgroundColor: phaseColors[m.ph-1]+'cc', pointRadius: 6+Math.sqrt(m.wg/1e8), pointHoverRadius: 8 })) },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { title: ctx => ctx[0].dataset.label, label: ctx => [`Budget: $${ctx.parsed.x}M`, `Gross: $${ctx.parsed.y.toFixed(0)}M`] } } },
+    scales: {
+      x: { title: { display: true, text: 'Budget ($M)', font: { size: 10 }, color: '#888' }, grid: { color: 'rgba(128,128,128,0.15)' }, ticks: { font: { size: 10 }, color: '#888', callback: v => '$'+v+'M' } },
+      y: { title: { display: true, text: 'Worldwide gross ($M)', font: { size: 10 }, color: '#888' }, grid: { color: 'rgba(128,128,128,0.15)' }, ticks: { font: { size: 10 }, color: '#888', callback: v => '$'+v+'M' } }
+    }
+  }
+});
+
+const sorted = raw.slice().sort((a,b)=>b.wg-a.wg);
+new Chart(document.getElementById('barChart'), {
+  type: 'bar',
+  data: {
+    labels: sorted.map(m => m.t.length > 22 ? m.t.slice(0,22)+'…' : m.t),
+    datasets: [
+      { label: 'International', data: sorted.map(m=>m.ig/1e6), backgroundColor: '#378ADD', stack: 's' },
+      { label: 'Domestic', data: sorted.map(m=>m.dg/1e6), backgroundColor: '#639922', stack: 's' }
+    ]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.raw.toFixed(0)}M` } } },
+    scales: {
+      x: { stacked: true, grid: { color: 'rgba(128,128,128,0.15)' }, ticks: { font: { size: 10 }, color: '#888', callback: v => '$'+v+'M' } },
+      y: { stacked: true, ticks: { font: { size: 10 }, color: '#888' }, grid: { display: false } }
+    }
+  }
+});
+
+const byPhase = raw.slice().sort((a,b)=>b.wg-a.wg);
+document.getElementById('filmTable').innerHTML = `
+  <thead><tr>
+    <th>#</th><th>Film</th><th>Year</th><th>Phase</th><th>Budget</th><th>Domestic</th><th>International</th><th>Worldwide</th><th>RT fan</th><th>ROI</th>
+  </tr></thead>
+  <tbody>${byPhase.map((m,i) => `<tr>
+    <td style="color:var(--color-text-tertiary)">${i+1}</td>
+    <td style="font-weight:500">${m.t}</td>
+    <td style="color:var(--color-text-secondary)">${m.y}</td>
+    <td><span class="badge badge-${m.ph}">Phase ${m.ph}</span></td>
+    <td>${fmt(m.b*1e6)}</td>
+    <td>${fmt(m.dg)}</td>
+    <td>${fmt(m.ig)}</td>
+    <td style="font-weight:500">${fmt(m.wg)}</td>
+    <td>${m.rt}%</td>
+    <td class="${m.roi>=0?'roi-pos':'roi-neg'}">${m.roi.toFixed(1)}%</td>
+  </tr>`).join('')}</tbody>
+`;
+</script>

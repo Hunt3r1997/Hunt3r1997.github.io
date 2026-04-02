@@ -171,15 +171,18 @@ new Chart(document.getElementById('bubbleChart'), {
 });
 
 const sorted = raw.slice().sort((a,b)=>b.wg-a.wg);
+const top20Sorted = sorted.slice(0, 20);
+
 new Chart(document.getElementById('barChart'), {
   type: 'bar',
   data: {
-    labels: sorted.map((m, i) => `${i+1}. ${m.t}`),
+    labels: top20Sorted.map((m, i) => `${i+1}. ${m.t}`),
     datasets: [
-      { label: 'International', data: sorted.map(m=>m.ig/1e6), backgroundColor: '#378ADD', stack: 's' },
-      { label: 'Domestic', data: sorted.map(m=>m.dg/1e6), backgroundColor: '#639922', stack: 's' }
+      { label: 'International', data: top20Sorted.map(m=>m.ig/1e6), backgroundColor: '#378ADD', stack: 's' },
+      { label: 'Domestic', data: top20Sorted.map(m=>m.dg/1e6), backgroundColor: '#639922', stack: 's' }
     ]
   },
+ 
   options: {
     indexAxis: 'y',
     responsive: true, maintainAspectRatio: false,
